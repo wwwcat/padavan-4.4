@@ -1,17 +1,18 @@
 name: toolchain
-
-on: 
+on:
   workflow_dispatch:
-
 jobs:
   build:
     name: build
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false          # ← ADD THIS (recommended)
+      max-parallel: 2           # ← ADD THIS (recommended, optional)
       matrix:
         target: [mipsel-linux-uclibc-gcc7, mipsel-linux-musl-gcc7, mipsel-linux-uclibc-gcc10, mipsel-linux-musl-gcc10, mipsel-linux-uclibc-gcc11, mipsel-linux-musl-gcc11, mipsel-linux-uclibc-gcc12, mipsel-linux-musl-gcc12, mipsel-linux-uclibc-gcc13, mipsel-linux-musl-gcc13]
     steps:
       - uses: actions/checkout@main
+
       - name: Prepare environment
         run: |
           sudo apt update
@@ -19,6 +20,15 @@ jobs:
             fakeroot kmod cpio bc zip git python3-docutils gettext automake autopoint \
             texinfo build-essential help2man pkg-config zlib1g-dev libgmp3-dev \
             libmpc-dev libmpfr-dev libncurses5-dev libltdl-dev wget libc-dev-bin
+
+      # ↓↓↓ ADD THIS NEW STEP ↓↓↓
+      - name: Pre-download ncurses (fix checksum mismatch)
+        run: |
+          mkdir -p /home/runner/src
+          curl -fSsL -o /home/runner/src/ncurses-6.4.tar.gz \
+            https://ftp.gnu.org/gnu/ncurses/ncurses-6.4.tar.gz
+          echo "1c2efff87a82a57e57b0c60023c87bae93f6718114c8f9dc010d4c21119a2f7576d0225dab5f0a227c2cfc6fb6bdbd62728e407f35fce5bf351bb50cf9e0fd34  /home/runner/src/ncurses-6.4.tar.gz" | sha512sum -c -
+
       - name: Build toolchain
         run: |
           make CT_TARGET=${CT_TARGET} CT_VERSION=${CT_VERSION}
@@ -27,11 +37,14 @@ jobs:
         env:
           CT_TARGET: ${{ matrix.target }}
           CT_VERSION: 1.26.0
+          CT_LOCAL_TARBALLS_DIR: /home/runner/src   # ← ADD THIS LINE
         working-directory: toolchain
+
       - uses: actions/upload-artifact@main
         with:
           name: ${{ matrix.target }}
           path: toolchain/${{ matrix.target }}.tar.xz
+
       - uses: ncipollo/release-action@main
         with:
           tag: toolchain
