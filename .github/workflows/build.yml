@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [MI-R4A, NETGEAR-R7450]
+        target: [CR660x, TX1801, JCG-Q20-PB, GHL, ZTE-E8820S, NETGEAR-BZV]
         toolchain: [mipsel-linux-uclibc]
     steps:
       - uses: actions/checkout@main
